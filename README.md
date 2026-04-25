@@ -29,7 +29,7 @@ Best run after dreaming when memory is near capacity, or as a periodic maintenan
 Agent Dreaming (produces) → Memory Lean Check (trims/verifies)
 ```
 
-Dreaming *adds* better entries by extracting insights from sessions. Lean check *removes* bloat by condensing verbose entries into wiki pointers. Together they keep memory under 30% of the 2,200 character limit while preserving all the signal.
+Dreaming *adds* better entries by extracting insights from sessions. Lean check *removes* bloat by condensing verbose entries into wiki pointers. Together they aim to keep memory under 60% of the 2,200 character limit while preserving all the signal.
 
 ## Installation
 
