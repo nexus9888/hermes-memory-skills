@@ -11,7 +11,7 @@ Review `$HERMES_HOME/memories/MEMORY.md` and keep it compact.
 
 1. Read `$HERMES_HOME/memories/MEMORY.md`
 2. Count current entries: split on `§` and count non-empty segments. **Remember this count.**
-3. Determine the wiki path: `WIKI="${WIKI_PATH:-$HOME/wiki}"`. Read `$WIKI/index.md` to know what wiki pages exist
+3. Determine the wiki path: read `wiki.path` from `${HERMES_HOME}/config.yaml` (e.g. `grep wiki.path ${HERMES_HOME}/config.yaml`). Fall back to `${HERMES_HOME}/wiki` if not configured. Never use `$HOME/wiki` — that's shared across profiles and breaks isolation. Read `$WIKI/index.md` to know what wiki pages exist
 4. **Validate existing pointers first.** For each entry that contains `see wiki/`:
    - Extract the wiki path after `see wiki/` (up to next space, `.md`, or `(`)
    - Check if the file exists at `$WIKI/<path>`
@@ -22,7 +22,7 @@ Review `$HERMES_HOME/memories/MEMORY.md` and keep it compact.
    - **Is it a short fact, preference, or correction?** → Leave it alone.
 6. When condensing:
    - If a relevant wiki page exists, rewrite as: `Topic: see wiki/path/page.md (brief description).`
-   - If no wiki page exists but the detail is valuable, **load the `llm-wiki` skill first**, then create a wiki page following its conventions (frontmatter, cross-references, index.md update, log.md entry, schema-compliant tags). Place it under `$WIKI` (not `~/.hermes/wiki/`).
+   - If no wiki page exists but the detail is valuable, **load the `llm-wiki` skill first**, then create a wiki page following its conventions (frontmatter, cross-references, index.md update, log.md entry, schema-compliant tags). Place it under `$WIKI`.
    - If the detail is trivial/temporary (task progress, TODOs, session outcomes), just remove it entirely.
 7. Do NOT condense:
    - Entries that are already pointers (contain `see wiki/`)

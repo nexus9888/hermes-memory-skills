@@ -25,7 +25,9 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 1. **Get recent sessions.** Call `session_search()` with no arguments. This returns recent session titles, previews, and timestamps. Note the count — if zero sessions, skip dreaming entirely and report "nothing to dream about."
 
-2. **Read current memory.** Read `$HERMES_HOME/memories/MEMORY.md`. Count existing entries (split on `§`, count non-empty segments). Note the char usage. This is your baseline.
+2. **Resolve wiki path.** Read `wiki.path` from `${HERMES_HOME}/config.yaml` (e.g. `grep wiki.path ${HERMES_HOME}/config.yaml`). Fall back to `${HERMES_HOME}/wiki` if not configured. Never use `$HOME/wiki` — that's shared across profiles and breaks isolation. This path is needed for checking existing wiki pages when evaluating pointer candidates.
+
+3. **Read current memory.** Read `$HERMES_HOME/memories/MEMORY.md`. Count existing entries (split on `§`, count non-empty segments). Note the char usage. This is your baseline.
 
 3. **Filter sessions.** Skip cron sessions (`session.source == "cron"`) — they're fully automated with no user interaction and produce zero correction/preference signal, unless they logged errors.
 
@@ -87,7 +89,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 3. **Execute promotions.** For each candidate that scores well on all four dimensions:
 
-   - **New entries:** Call `memory(action='add', target='memory', content='...')` — use wiki pointers where a wiki page exists or should exist. Keep entries under 150 chars ideally.
+   - **New entries:** Call `memory(action='add', target='memory', content='...')` — use wiki pointers (relative to `$WIKI`) where a wiki page exists or should exist. Keep entries under 150 chars ideally.
    - **Replacements:** Call `memory(action='replace', target='memory', old_text='...', new_text='...')` — the old_text must be a unique substring of the existing entry.
    - **Removals:** Call `memory(action='remove', target='memory', old_text='...')` — only if genuinely stale/contradicted.
 
@@ -156,7 +158,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 - **Never fabricate session content.** If `session_search` doesn't return useful detail for a session, skip it. Do not infer or hallucinate what happened.
 - **Never promote speculative entries.** Every promoted memory must trace to a specific session interaction. "I think the user might prefer X" is not promotion-worthy.
-- **Pointer = entry.** If an entry has a wiki/skill pointer (`see wiki/...` or `see skill '...'`), the pointer IS the entry. Inline detail that duplicates what the pointer targets should be removed. Details belong at the destination, not in memory.
+- **Pointer = entry.** If an entry has a wiki/skill pointer (`see wiki/...` or `see skill '...'`), the pointer IS the entry. Inline detail that duplicates what the pointer targets should be removed. Details belong at the destination, not in memory. Wiki pointers are relative to the resolved `$WIKI` path (from config.yaml, falling back to `${HERMES_HOME}/wiki`).
 - **Preserve the § delimiter.** When reading/writing MEMORY.md directly (for counting), never corrupt the entry separator.
 - **Keep dreams compact.** Dream artifacts should be under 200 lines. If a session generated 20+ candidates, pick the top 5 by durability score.
 - **Respect the char limit.** MEMORY.md has a 2,200 char limit. Over 60% (1,320 chars): defer *new additions* but still allow *replacements that reduce char count*. Over 80%: defer everything and run `memory-lean-check` first.
