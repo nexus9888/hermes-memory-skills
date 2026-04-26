@@ -36,9 +36,11 @@ Dreaming *adds* better entries by extracting insights from sessions. Lean check 
 Copy the skill directories into your Hermes skills folder:
 
 ```bash
-cp -r memory-lean-check ~/.hermes/skills/management/
-cp -r agent-dreaming ~/.hermes/skills/management/
+cp -r memory-lean-check $HERMES_HOME/skills/management/
+cp -r agent-dreaming $HERMES_HOME/skills/management/
 ```
+
+> **Profile-aware:** All paths use `$HERMES_HOME` (set automatically by Hermes), so these skills work correctly regardless of which profile is active.
 
 Or install via Hermes CLI if available:
 ```

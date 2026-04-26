@@ -5,11 +5,11 @@ description: Review MEMORY.md and ensure entries use wiki pointers instead of in
 
 # Memory Lean Check
 
-Review `~/.hermes/memories/MEMORY.md` and keep it compact.
+Review `$HERMES_HOME/memories/MEMORY.md` and keep it compact.
 
 ## Steps
 
-1. Read `~/.hermes/memories/MEMORY.md`
+1. Read `$HERMES_HOME/memories/MEMORY.md`
 2. Count current entries: split on `§` and count non-empty segments. **Remember this count.**
 3. Determine the wiki path: `WIKI="${WIKI_PATH:-$HOME/wiki}"`. Read `$WIKI/index.md` to know what wiki pages exist
 4. **Validate existing pointers first.** For each entry that contains `see wiki/`:
@@ -27,7 +27,7 @@ Review `~/.hermes/memories/MEMORY.md` and keep it compact.
 7. Do NOT condense:
    - Entries that are already pointers (contain `see wiki/`)
    - User preferences and corrections (these belong in memory)
-   - Environment facts that are genuinely short (e.g. "Default workspace: ~/workspace/")
+   - Environment facts that are genuinely short (e.g. "Default workspace: /home/josh/workspace/")
    - The convention note itself
 8. Save changes only if something was actually condensed or removed.
 9. **Post-write integrity check (CRITICAL):**

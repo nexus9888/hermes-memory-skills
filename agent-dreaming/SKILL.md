@@ -25,7 +25,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 1. **Get recent sessions.** Call `session_search()` with no arguments. This returns recent session titles, previews, and timestamps. Note the count — if zero sessions, skip dreaming entirely and report "nothing to dream about."
 
-2. **Read current memory.** Read `~/.hermes/memories/MEMORY.md`. Count existing entries (split on `§`, count non-empty segments). Note the char usage. This is your baseline.
+2. **Read current memory.** Read `$HERMES_HOME/memories/MEMORY.md`. Count existing entries (split on `§`, count non-empty segments). Note the char usage. This is your baseline.
 
 3. **Filter sessions.** Skip cron sessions (`session.source == "cron"`) — they're fully automated with no user interaction and produce zero correction/preference signal, unless they logged errors.
 
@@ -36,7 +36,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
    - **Recurring problems** — things that broke, workarounds found
    - **Resolved ambiguities** — cases where you had to ask clarifying questions and got definitive answers
 
-5. **Stage candidates.** Write a dream artifact to `~/.hermes/dreams/YYYY-MM-DD-HHMM.md` with this structure:
+5. **Stage candidates.** Write a dream artifact to `$HERMES_HOME/dreams/YYYY-MM-DD-HHMM.md` with this structure:
 
 ```markdown
 # Dream Artifact — YYYY-MM-DD HH:MM
@@ -91,7 +91,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
    - **Replacements:** Call `memory(action='replace', target='memory', old_text='...', new_text='...')` — the old_text must be a unique substring of the existing entry.
    - **Removals:** Call `memory(action='remove', target='memory', old_text='...')` — only if genuinely stale/contradicted.
 
-4. **Log promotions to dream diary.** Append to `~/.hermes/dreams/diary.md`:
+4. **Log promotions to dream diary.** Append to `$HERMES_HOME/dreams/diary.md`:
 
 ```markdown
 ### YYYY-MM-DD HH:MM — Deep Phase
@@ -114,7 +114,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 ### Steps
 
-1. **Read recent dream artifacts.** List files in `~/.hermes/dreams/` (excluding `diary.md`). Read the last 3–5 artifacts. Look for:
+1. **Read recent dream artifacts.** List files in `$HERMES_HOME/dreams/` (excluding `diary.md`). Read the last 3–5 artifacts. Look for:
    - **Repeated corrections** — Same thing corrected 2+ times → candidate for a wiki entry or skill update
    - **Repeated patterns** — Same problem solved 2+ times → candidate for a new skill
    - **Memory gaps** — Topics that came up frequently but have no memory entry → candidate for promotion in next cycle
