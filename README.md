@@ -36,6 +36,27 @@ Phase 3: REM  — extract patterns, propose structural changes
 - New entries in holographic always include `entities` for compositional recall
 - Honcho/Mem0/other backends gracefully fall back to built-in
 
+### ✂️ Memory Lean Check (Memory-Agnostic)
+
+Memory auditing that adapts to the backend. For built-in: the same surgical trimmer as the
+original — condenses verbose entries to wiki pointers, enforces the 2,200 char limit. For
+holographic: audits trust scores, decays stale facts, removes dead facts below
+`min_trust_threshold`, and validates wiki pointers.
+
+```
+Built-in:   read MEMORY.md → validate pointers → condense to wiki → § integrity check
+Holographic: fact_store(list) → audit trust/retrieval → decay stale → remove dead → contradictions
+```
+
+**What's different from the original:**
+- Phase 0 backend detection from `config.yaml`
+- Built-in path is unchanged (same §-safe trimming)
+- Holographic path: trust-score buckets (healthy/stale/low-trust/suspicious)
+- `fact_feedback(action='unhelpful')` gently decays stale facts (−0.10 per flag)
+- `fact_store(action='contradict')` finds conflicting claims
+- Quick MEMORY.md pass even when holographic is active (it still runs)
+- ASCII-art report with per-bucket counts
+
 ## Installation
 
 ```bash
@@ -43,11 +64,12 @@ Phase 3: REM  — extract patterns, propose structural changes
 git clone https://github.com/nexus9888/hermes-memory-skills.git
 cd hermes-memory-skills
 
-# Copy the skill into your Hermes skills directory
+# Copy the skills into your Hermes skills directory
 cp -r agent-dreaming-agnostic ~/.hermes/skills/management/
+cp -r memory-lean-check-agnostic ~/.hermes/skills/management/
 
-# Verify it's installed
-hermes skills list | grep agent-dreaming
+# Verify they're installed
+hermes skills list | grep agnostic
 ```
 
 Or install directly from the repo:
@@ -55,6 +77,7 @@ Or install directly from the repo:
 ```bash
 hermes skills tap add https://github.com/nexus9888/hermes-memory-skills
 hermes skills install agent-dreaming-agnostic
+hermes skills install memory-lean-check-agnostic
 ```
 
 ## Cron Setup
@@ -69,12 +92,12 @@ hermes cron create \
   --skill agent-dreaming-agnostic \
   "Run the memory consolidation with the active backend"
 
-# Only for built-in backend users — holographic users can skip this:
+# Audit memory daily — works for both backends
 hermes cron create \
   --schedule "0 3 * * *" \
   --name "memory-lean-check" \
-  --skill memory-lean-check \
-  "Surgical memory trim"
+  --skill memory-lean-check-agnostic \
+  "Surgical memory audit with the active backend"
 ```
 
 ## Requirements
@@ -111,28 +134,46 @@ Fallback is intentional — better to write to MEMORY.md than to nothing.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│              agent-dreaming-agnostic         │
-│                                              │
-│  Phase 0: Backend Detection                  │
-│    └─ read memory.provider from config.yaml  │
-│                                              │
-│  Phase 1: Light (same regardless of backend) │
-│    ├─ session_search() → recent sessions     │
-│    ├─ deep-dive signal sessions              │
-│    └─ stage candidates → dream artifact      │
-│                                              │
-│  Phase 2: Deep (backend-routed)              │
-│    ├─ score candidates (4 dimensions)        │
-│    ├─ built-in → memory() tool               │
-│    ├─ holographic → fact_store/fact_feedback │
-│    └─ post-promotion capacity check          │
-│                                              │
-│  Phase 3: REM (pattern extraction)           │
-│    ├─ cross-dream pattern detection          │
-│    ├─ propose structural changes             │
-│    └─ user approval gate                     │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│           agent-dreaming-agnostic                    │
+│                                                      │
+│  Phase 0: Backend Detection                          │
+│    └─ read memory.provider from config.yaml          │
+│                                                      │
+│  Phase 1: Light (same regardless of backend)         │
+│    ├─ session_search() → recent sessions             │
+│    ├─ deep-dive signal sessions                      │
+│    └─ stage candidates → dream artifact              │
+│                                                      │
+│  Phase 2: Deep (backend-routed)                      │
+│    ├─ score candidates (4 dimensions)                │
+│    ├─ built-in → memory() tool                       │
+│    ├─ holographic → fact_store/fact_feedback         │
+│    └─ post-promotion capacity check                  │
+│                                                      │
+│  Phase 3: REM (pattern extraction)                   │
+│    ├─ cross-dream pattern detection                  │
+│    ├─ propose structural changes                     │
+│    └─ user approval gate                             │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼ produces entries
+┌─────────────────────────────────────────────────────┐
+│         memory-lean-check-agnostic                   │
+│                                                      │
+│  Phase 0: Backend Detection (same as dreaming)       │
+│                                                      │
+│  Built-in path:                                      │
+│    read MEMORY.md → validate pointers → condense     │
+│    to wiki → § integrity check → report              │
+│                                                      │
+│  Holographic path:                                   │
+│    fact_store(list) → trust/retrieval audit          │
+│    stale → fact_feedback(unhelpful)                  │
+│    dead  → fact_store(remove)                        │
+│    contradictions → flag for review                  │
+│    MEMORY.md quick pass → report                     │
+└─────────────────────────────────────────────────────┘
 ```
 
 ## License
