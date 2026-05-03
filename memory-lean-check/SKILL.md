@@ -5,6 +5,8 @@ description: Review MEMORY.md and ensure entries use wiki pointers instead of in
 
 # Memory Lean Check
 
+> **Using Holographic memory?** Use [`memory-lean-check-agnostic`](../memory-lean-check-agnostic/SKILL.md) instead — it audits trust scores, decays stale facts, and validates pointers in holographic storage.
+
 Review `$HERMES_HOME/memories/MEMORY.md` and keep it compact.
 
 ## Steps

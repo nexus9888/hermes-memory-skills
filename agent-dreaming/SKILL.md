@@ -7,6 +7,8 @@ triggers: ["dream", "consolidate memory", "run dreaming", "memory consolidation"
 
 # Agent Dreaming
 
+> **Using Holographic memory?** Use [`agent-dreaming-agnostic`](../agent-dreaming-agnostic/SKILL.md) instead — it auto-detects your backend and routes to `fact_store`/`fact_feedback`.
+
 Three-phase background memory consolidation. Reviews recent session transcripts, scores what's worth keeping, promotes durable insights, and extracts recurring patterns.
 
 **When to run:** Scheduled cron (recommended: every 6–8 hours) or manually after a burst of activity.
