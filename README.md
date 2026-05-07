@@ -48,7 +48,7 @@ Built-in:   read MEMORY.md → validate pointers → condense to wiki → § int
 Holographic: fact_store(list) → audit trust/retrieval → decay stale → remove dead → contradictions
 ```
 
-**What's different from the original:**
+**What's different from my original:**
 - Phase 0 backend detection from `config.yaml`
 - Built-in path is unchanged (same §-safe trimming)
 - Holographic path: trust-score buckets (healthy/stale/low-trust/suspicious)
