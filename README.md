@@ -12,15 +12,15 @@ Rather than making users choose between backends OR skills, these skills detect 
 
 | Backend | Detection | Phase 2 tool | Capacity model | Bloat handling |
 |---------|-----------|-------------|----------------|----------------|
-| **Built-in** (default) | `memory.provider` empty/null | `memory()` | 2,200 char limit | `memory-lean-check` trimming |
+| **Built-in** (default) | `memory.provider` empty/null | `memory()` | 2,200 char limit | Inline trimming (wiki pointers) |
 | **Holographic** | `memory.provider: holographic` | `fact_store()` + `fact_feedback()` | Trust scores (0.0–1.0) | `fact_feedback(action='unhelpful')` decay |
-| **Honcho, Mem0, etc.** | Detected but unsupported | Falls back to built-in `memory()` | Built-in limits apply | Built-in trimming |
+| **Honcho, Mem0, etc.** | Detected but unsupported | Falls back to built-in `memory()` | Built-in limits apply | Inline trimming |
 
 ## Skills
 
 ### 🌙 Agent Dreaming (Memory-Agnostic)
 
-Three-phase background memory consolidation — same Light/Deep/REM structure as the original, but with backend detection as Phase 0 and dual routing in Phase 2.
+Three-phase background memory consolidation — same Light/Deep/REM structure as the original, but with backend detection as Phase 0 and dual routing in Phase 2. **Self-contained:** handles its own post-promotion capacity management (inline trimming for built-in, trust decay for holographic).
 
 ```
 Phase 0: Detect backend (built-in or holographic)
@@ -33,15 +33,18 @@ Phase 3: REM  — extract patterns, propose structural changes
 - Phase 0 backend detection from `config.yaml`
 - Phase 2 routes to `memory()` or `fact_store()`/`fact_feedback()` automatically
 - Capacity check adapts: char limit for built-in, trust score distribution for holographic
+- Over 80% capacity: inline trimming to wiki pointers (no external audit tool needed)
 - New entries in holographic always include `entities` for compositional recall
 - Honcho/Mem0/other backends gracefully fall back to built-in
 
-### ✂️ Memory Lean Check (Memory-Agnostic)
+### ✂️ Memory Lean Check (Memory-Agnostic) — Standalone
 
-Memory auditing that adapts to the backend. For built-in: the same surgical trimmer as the
-original — condenses verbose entries to wiki pointers, enforces the 2,200 char limit. For
-holographic: audits trust scores, decays stale facts, removes dead facts below
-`min_trust_threshold`, and validates wiki pointers.
+Memory auditing that adapts to the backend. Runs independently as periodic maintenance
+(no longer required by agent-dreaming, which handles its own capacity management).
+For built-in: the same surgical trimmer as the original — condenses verbose entries to
+wiki pointers, enforces the 2,200 char limit. For holographic: audits trust scores,
+decays stale facts, removes dead facts below `min_trust_threshold`, and validates
+wiki pointers.
 
 ```
 Built-in:   read MEMORY.md → validate pointers → condense to wiki → § integrity check
@@ -64,8 +67,10 @@ Holographic: fact_store(list) → audit trust/retrieval → decay stale → remo
 git clone https://github.com/nexus9888/hermes-memory-skills.git
 cd hermes-memory-skills
 
-# Copy the skills into your Hermes skills directory
+# Install agent-dreaming (the core consolidation skill)
 cp -r agent-dreaming-agnostic ~/.hermes/skills/management/
+
+# Optional: install memory-lean-check for periodic standalone audits
 cp -r memory-lean-check-agnostic ~/.hermes/skills/management/
 
 # Verify they're installed
@@ -85,19 +90,20 @@ hermes skills install memory-lean-check-agnostic
 Recommended schedule (works regardless of backend):
 
 ```bash
-# Dream every 6 hours
+# Dream every 6 hours — self-contained, handles its own capacity management
 hermes cron create \
   --schedule "0 */6 * * *" \
   --name "agent-dreaming" \
   --skill agent-dreaming-agnostic \
   "Run the memory consolidation with the active backend"
 
-# Audit memory daily — works for both backends
+# Optional: standalone memory audit — not required by dreaming
+# but useful for periodic deep-clean on the built-in backend
 hermes cron create \
   --schedule "0 3 * * *" \
   --name "memory-lean-check" \
   --skill memory-lean-check-agnostic \
-  "Surgical memory audit with the active backend"
+  "Standalone surgical memory audit with the active backend"
 ```
 
 ## Requirements
@@ -136,6 +142,7 @@ Fallback is intentional — better to write to MEMORY.md than to nothing.
 ```
 ┌─────────────────────────────────────────────────────┐
 │           agent-dreaming-agnostic                    │
+│               (self-contained)                       │
 │                                                      │
 │  Phase 0: Backend Detection                          │
 │    └─ read memory.provider from config.yaml          │
@@ -150,16 +157,20 @@ Fallback is intentional — better to write to MEMORY.md than to nothing.
 │    ├─ built-in → memory() tool                       │
 │    ├─ holographic → fact_store/fact_feedback         │
 │    └─ post-promotion capacity check                  │
+│       ├─ <80%: healthy                               │
+│       └─ ≥80%: inline trimming to wiki pointers      │
 │                                                      │
 │  Phase 3: REM (pattern extraction)                   │
 │    ├─ cross-dream pattern detection                  │
 │    ├─ propose structural changes                     │
 │    └─ user approval gate                             │
 └─────────────────────────────────────────────────────┘
-                         │
-                         ▼ produces entries
-┌─────────────────────────────────────────────────────┐
-│         memory-lean-check-agnostic                   │
+
+                  ▲ independent, optional
+                  │
+┌─────────────────┴──────────────────────────────────┐
+│         memory-lean-check-agnostic                  │
+│              (standalone audit)                      │
 │                                                      │
 │  Phase 0: Backend Detection (same as dreaming)       │
 │                                                      │

@@ -8,11 +8,12 @@ triggers: ["lean check", "trim memory", "memory audit", "clean memory"]
 # Memory Lean Check (Memory-Agnostic)
 
 Keeps memory lean across backends. Auto-detects the active memory provider and
-applies the right audit strategy. Partner to `agent-dreaming-agnostic`.
+applies the right audit strategy. Runs independently or as periodic maintenance
+— not a dependency of agent-dreaming, which handles its own capacity management.
 
-**When to run:** After dreaming when memory needs auditing, or as periodic maintenance.
-For built-in users: run when memory is above 60% of the 2,200 char limit.
-For holographic users: run weekly to catch trust-score decay and stale facts.
+**When to run:** As periodic maintenance. For built-in users: run when memory
+is above 60% of the 2,200 char limit. For holographic users: run weekly to catch
+trust-score decay and stale facts.
 
 ---
 

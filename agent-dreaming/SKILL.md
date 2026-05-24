@@ -13,7 +13,9 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 
 **When to run:** Scheduled cron (recommended: every 6–8 hours) or manually after a burst of activity.
 
-**Composition with memory-lean-check:** Dreaming *produces* better memory entries. Lean check *trims and verifies* them. Run dreaming first, then lean check if memory is near capacity.
+**Self-contained:** Dreaming handles its own post-promotion capacity management.
+At 80%+ capacity, it performs inline trimming — condensing verbose entries to wiki
+pointers — instead of requiring an external audit skill.
 
 **Autonomous vs interactive:** Light and Deep phases run autonomously in both cron and manual modes. REM phase sends a message to the user with proposed structural actions and waits for response — it never creates wiki pages or skills without approval.
 
@@ -85,7 +87,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
    - **Novelty:** Is this genuinely new, or does it overlap with an existing entry? (Check MEMORY.md manually — search for keywords) → FAIL if a similar entry already exists.
    - **Durability:** Will this still be true in 30 days? User preferences and environment facts score high. Task progress, TODOs, and session outcomes score low. → FAIL if the fact is temporary or likely to change.
    - **Specificity:** Is this precise enough to be actionable? "User prefers X" is good. "User might like X" is vague. → FAIL if the entry would require guessing to act on.
-   - **Reduction:** Does promoting this let you *remove or shorten* an existing entry? This is the lean check synergy. → Not a hard fail, but candidates with reduction potential get priority.
+   - **Reduction:** Does promoting this let you *remove or shorten* an existing entry? This is the consolidation synergy. → Not a hard fail, but candidates with reduction potential get priority.
 
    **For replacements:** Only assess Novelty (is the new version genuinely better?) and Durability (is the replacement still accurate?). Specificity and Reduction don't apply.
 
@@ -108,7 +110,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 5. **Post-promotion check.** Re-read MEMORY.md. Verify entry count is correct. Check char usage against thresholds:
    - Under 60%: healthy, no action needed
    - 60–80%: flag in diary, allow replacements but defer new additions next cycle
-   - Over 80%: flag in diary as critical, recommend running `memory-lean-check` before next dreaming cycle
+   - Over 80%: flag in diary as critical, perform inline trimming — condense verbose entries to wiki pointers to free space before next dreaming cycle
 
 ---
 
@@ -163,7 +165,7 @@ Three-phase background memory consolidation. Reviews recent session transcripts,
 - **Pointer = entry.** If an entry has a wiki/skill pointer (`see wiki/...` or `see skill '...'`), the pointer IS the entry. Inline detail that duplicates what the pointer targets should be removed. Details belong at the destination, not in memory. Wiki pointers are relative to the resolved `$WIKI` path (from config.yaml, falling back to `${HERMES_HOME}/wiki`).
 - **Preserve the § delimiter.** When reading/writing MEMORY.md directly (for counting), never corrupt the entry separator.
 - **Keep dreams compact.** Dream artifacts should be under 200 lines. If a session generated 20+ candidates, pick the top 5 by durability score.
-- **Respect the char limit.** MEMORY.md has a 2,200 char limit. Over 60% (1,320 chars): defer *new additions* but still allow *replacements that reduce char count*. Over 80%: defer everything and run `memory-lean-check` first.
+- **Respect the char limit.** MEMORY.md has a 2,200 char limit. Over 60% (1,320 chars): defer *new additions* but still allow *replacements that reduce char count*. Over 80%: defer everything and perform inline trimming of verbose entries (condense to wiki pointers).
 - **Dream diary is append-only.** Never overwrite previous diary entries. New entries go at the bottom (chronological order).
 - **Session IDs in diary.** Always note which session(s) informed each promotion for traceability.
 

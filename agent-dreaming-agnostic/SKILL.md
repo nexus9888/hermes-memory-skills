@@ -14,10 +14,9 @@ correct tools. Otherwise identical to the standard agent-dreaming skill.
 **When to run:** Scheduled cron (recommended: every 6–8 hours) or manually after
 a burst of activity.
 
-**Composition with memory-lean-check:** Dreaming *produces* better memory entries.
-Lean check *trims and verifies* them. Run dreaming first, then lean check if the
-backend is built-in (MEMORY.md has a char limit). Holographic users can skip lean
-check — trust scoring handles decay automatically.
+**Self-contained:** Dreaming handles its own post-promotion capacity management.
+Built-in: inline trimming of verbose entries at 80%+ capacity. Holographic:
+trust-score decay via `fact_feedback`. No external audit skill needed.
 
 **Autonomous vs interactive:** Light and Deep phases run autonomously in both
 cron and manual modes. REM phase sends a message to the user with proposed
@@ -161,8 +160,9 @@ determines which tools you use in Phase 2.
      is good. "User might like X" is vague. → FAIL if the entry would require
      guessing to act on.
    - **Reduction:** Does promoting this let you *remove or shorten* an existing
-     entry? This is the lean-check synergy. → Not a hard fail, but candidates
-     with reduction potential get priority.
+     entry? This is the consolidation synergy — new entries that replace or
+     compress old ones reduce total memory footprint. → Not a hard fail, but
+     candidates with reduction potential get priority.
 
    **For replacements:** Only assess Novelty (is the new version genuinely
    better?) and Durability (is the replacement still accurate?). Specificity
@@ -221,8 +221,8 @@ determines which tools you use in Phase 2.
    Re-read `$HERMES_HOME/memories/MEMORY.md`. Check char usage:
    - Under 60%: healthy, no action needed
    - 60–80%: flag in diary, allow replacements but defer new additions next cycle
-   - Over 80%: flag in diary as critical, recommend running `memory-lean-check`
-     before next dreaming cycle
+   - Over 80%: flag in diary as critical, perform inline trimming — condense
+     verbose entries to wiki pointers to free space before next dreaming cycle
 
    #### Holographic Backend
 
@@ -310,7 +310,8 @@ structural action.
   session generated 20+ candidates, pick the top 5 by durability score.
 - **Respect backend limits:**
   - Built-in: Over 60% char usage → defer *new additions*, allow *replacements
-    that reduce char count*. Over 80% → defer everything, run `memory-lean-check`.
+    that reduce char count*. Over 80% → defer everything, perform inline
+    trimming of verbose entries (condense to wiki pointers).
   - Holographic: No char limit, but flag entries below `min_trust_threshold`.
     Contradicted entries should get `fact_feedback(action='unhelpful')`.
 - **Dream diary is append-only.** Never overwrite previous diary entries. New
@@ -345,7 +346,7 @@ After a dreaming run:
 | Phase 2: remove | `memory(action='remove', old_text='...')` | `fact_store(action='remove', fact_id=N)` |
 | Phase 2: list/verify | Read MEMORY.md | `fact_store(action='list')` |
 | Capacity check | Char count / 2,200 | Trust score distribution |
-| Bloat remediation | `memory-lean-check` skill | `fact_feedback(action='unhelpful')` + trust decay |
+| Bloat remediation | Inline trimming (wiki pointers) | `fact_feedback(action='unhelpful')` + trust decay |
 | Phase 3 REM | ✅ | ✅ |
 | Honcho fallback | ✅ (falls back to built-in) | N/A |
 | Mem0 fallback | ✅ (falls back to built-in) | N/A |
