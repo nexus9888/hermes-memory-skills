@@ -94,6 +94,6 @@ entity should be in the fact's entity list.
 | Compositional queries | No (grep at best) | Yes (HRR reason/probe/related) |
 | Trust/decay | Manual (remove stale entries) | Automatic (trust scoring + feedback) |
 | Entry format | Free text, § delimited | Structured: content + category + entities + tags |
-| Bloat handling | Inline trimming (built-in) or trust decay (holographic) | `fact_feedback(action='unhelpful')` decay |
+| Bloat handling | Phase 2.5 Condensation (built into dreaming) | `fact_feedback(action='unhelpful')` decay |
 | Offline/air-gapped | Yes (local file) | Yes (local SQLite) |
 | Multi-profile safe | Via `$HERMES_HOME` | Via `$HERMES_HOME` |

@@ -1,6 +1,6 @@
 ---
 name: agent-dreaming-agnostic
-description: "Memory-agnostic background consolidation — reviews sessions, scores candidates, promotes durable insights to the active memory backend (built-in MEMORY.md or Holographic). Three-phase (Light/Deep/REM). Run via cron or manually."
+description: "Memory-agnostic background consolidation — reviews sessions, scores candidates, promotes durable insights to the active memory backend (built-in MEMORY.md or Holographic). Three-phase (Light/Deep/Condensation/REM). Run via cron or manually."
 tags: [memory, consolidation, dreaming, introspection, maintenance, holographic]
 triggers: ["dream", "consolidate memory", "run dreaming", "memory consolidation"]
 ---
@@ -9,14 +9,11 @@ triggers: ["dream", "consolidate memory", "run dreaming", "memory consolidation"
 
 Three-phase background memory consolidation that auto-detects the active memory
 backend (built-in MEMORY.md or Holographic) and routes Phase 2 promotions to the
-correct tools. Otherwise identical to the standard agent-dreaming skill.
+correct tools. Condensation (formerly `memory-lean-check`) is built into the
+dreaming lifecycle as Phase 2.5.
 
 **When to run:** Scheduled cron (recommended: every 6–8 hours) or manually after
 a burst of activity.
-
-**Self-contained:** Dreaming handles its own post-promotion capacity management.
-Built-in: inline trimming of verbose entries at 80%+ capacity. Holographic:
-trust-score decay via `fact_feedback`. No external audit skill needed.
 
 **Autonomous vs interactive:** Light and Deep phases run autonomously in both
 cron and manual modes. REM phase sends a message to the user with proposed
@@ -58,6 +55,22 @@ determines which tools you use in Phase 2.
    ```
    Record `default_trust` and `min_trust_threshold` — these inform Phase 2 scoring.
 
+   **If grep returns nothing:** The `plugins.hermes-memory-store` section is
+   missing from config.yaml. This means holographic tools (`fact_store`, `probe`,
+   `reason`, `fact_feedback`) are **not registered** and will not appear in any
+   toolset. Log this as: `holographic configured but plugin not wired — fallback
+   to built-in`. Route all Phase 2 promotions to the built-in `memory()` tool.
+   This is the single most common blocker across dreaming cycles — flag it in the
+   REM message so the user can wire the plugin.
+
+5. **Verify tool availability before Phase 2.** After determining the backend,
+   confirm the required tools are actually available in your toolset by scanning
+   your tool list. If `fact_store` is absent despite holographic being configured,
+   fall back to built-in `memory()` and note it in the dream artifact's backend
+   section: `Holographic configured but tools unavailable — fallback to built-in`.
+   The Phase 2 routing table still applies, but the actual tool calls degrade to
+   built-in when holographic tools are missing.
+
 ---
 
 ## Phase 1: Light (Ingest + Stage)
@@ -91,7 +104,12 @@ determines which tools you use in Phase 2.
 
 5. **Deep-dive sessions with signal.** For each remaining session that looks
    substantive, call `session_search(query="<session topic keywords>")` to get a
-   full summary. Look for:
+   full summary. **Important:** FTS5 queries match message *content*, not session
+   titles — if `session_search(query="<exact session title>")` returns no results,
+   try broader keyword queries using terms likely to appear in the messages
+   (e.g. `"hello OR test OR bot"` rather than `"Testing the bot connection"`).
+   Also try `session_search(query="...")` without a `session_id` constraint —
+   discovery mode searches across all sessions and is more forgiving. Look for:
    - **User corrections** — "actually it's X not Y", "don't do that", "remember this"
    - **New preferences** — tool choices, style, workflow habits
    - **Environment discoveries** — ports, paths, service names, config quirks
@@ -160,9 +178,7 @@ determines which tools you use in Phase 2.
      is good. "User might like X" is vague. → FAIL if the entry would require
      guessing to act on.
    - **Reduction:** Does promoting this let you *remove or shorten* an existing
-     entry? This is the consolidation synergy — new entries that replace or
-     compress old ones reduce total memory footprint. → Not a hard fail, but
-     candidates with reduction potential get priority.
+     entry? → Not a hard fail, but candidates with reduction potential get priority.
 
    **For replacements:** Only assess Novelty (is the new version genuinely
    better?) and Durability (is the replacement still accurate?). Specificity
@@ -221,8 +237,8 @@ determines which tools you use in Phase 2.
    Re-read `$HERMES_HOME/memories/MEMORY.md`. Check char usage:
    - Under 60%: healthy, no action needed
    - 60–80%: flag in diary, allow replacements but defer new additions next cycle
-   - Over 80%: flag in diary as critical, perform inline trimming — condense
-     verbose entries to wiki pointers to free space before next dreaming cycle
+   - Over 80%: flag in diary as critical; run Phase 2.5 Condensation immediately
+     (see below) before promoting any new entries
 
    #### Holographic Backend
 
@@ -233,6 +249,89 @@ determines which tools you use in Phase 2.
    - New entries at `default_trust` (default 0.5): healthy
    - Entries that were contradicted or corrected: call
      `fact_feedback(action='unhelpful', fact_id=<id>)` to decay them
+
+---
+
+## Phase 2.5: Condensation (Memory Hygiene)
+
+**Goal:** Trim bloat and decay stale entries without losing signal. Runs after Phase 2
+promotions when capacity thresholds are breached, or as part of every dreaming cycle for
+holographic backends.
+
+**This replaces the deprecated `memory-lean-check` skill.** Condensation is now built
+into the dreaming lifecycle.
+
+### When to run
+
+| Backend | Trigger | Action |
+|---------|---------|--------|
+| **Built-in** | MEMORY.md > 60% char usage | Run condensation before next promotion cycle |
+| **Built-in** | MEMORY.md > 80% char usage | Run condensation immediately — defer all promotions |
+| **Holographic** | Every dreaming cycle | Light condensation pass (trust decay review) |
+| **Holographic** | 5+ facts below `min_trust_threshold` | Deep condensation (prune or update) |
+
+### Steps (Built-in Backend)
+
+1. **Read MEMORY.md.** Count entries and calculate char usage.
+
+2. **Identify bloat candidates:**
+   - Wiki pointers that are already covered by more recent entries
+   - Entries that duplicate info (merge them)
+   - Verbose entries that can be shortened to wiki pointers
+   - Stale entries referencing deprecated tools/projects/workflows
+
+3. **Execute condensation:**
+   - **Merge duplicates:** Combine overlapping entries into one. Use `memory(action='replace')`
+     for the merged version, then `memory(action='remove')` for the absorbed one.
+   - **Shorten to pointers:** Replace verbose entries with wiki pointers where the wiki
+     page already exists. Example: `"OpenWork: see wiki/infrastructure/openwork.md"`.
+   - **Remove stale entries:** Only if the tool/project is confirmed dead or the info
+     is contradicted by a more recent session.
+   - **Rephrase for density:** Tighten wording without losing meaning.
+
+4. **Verify:** Re-read MEMORY.md and confirm char usage dropped. Log changes to dream
+   diary with `CONDENSED:` prefix.
+
+### Steps (Holographic Backend)
+
+1. **List all facts:** `fact_store(action='list', limit=100)`.
+
+2. **Review trust scores:**
+   - Facts below `min_trust_threshold` (default 0.3): mark for pruning
+   - Facts at `default_trust` (0.5) with 0 retrieval count: candidates for decay
+   - Facts with `retrieval_count > 0` but `helpful_count == 0`: ambiguous — flag for review
+
+3. **Run contradiction check:** `fact_store(action='contradict')` — find pairs of facts
+   that make conflicting claims. For each pair, use `session_search` to determine which
+   is correct, then decay the wrong one with `fact_feedback(action='unhelpful')`.
+
+4. **Execute decay/pruning:**
+   - **Decay stale facts:** `fact_feedback(action='unhelpful', fact_id=<id>)` on facts
+     that are outdated or never retrieved.
+   - **Prune dead facts:** `fact_store(action='remove', fact_id=<id>)` only for facts
+     that are genuinely wrong or contradicted.
+   - **Update aging facts:** `fact_store(action='update', fact_id=<id>, content='...')`
+     for facts that are still relevant but need refreshing.
+
+5. **Log to dream diary:**
+   ```
+   ### YYYY-MM-DD HH:MM — Condensation (backend: holographic)
+   - DECAYED: [fact_id] [content snippet] (reason: never retrieved / outdated)
+   - REMOVED: [fact_id] [content snippet] (reason: contradicted by fact N)
+   - UPDATED: [fact_id] old → new
+   - HEALTHY: N facts at trust ≥0.5, avg retrieval: M
+   ```
+
+### Rules
+
+- **Condensation must not increase char/trust pressure.** Every action should reduce
+  the footprint or improve signal quality.
+- **Never remove facts without evidence.** For built-in, verify staleness against
+  recent sessions. For holographic, use `contradict` + `session_search` before
+  `fact_feedback(action='unhelpful')`.
+- **Wiki pointers are preferred over inline detail.** If a wiki page exists or should
+  exist, point to it rather than embedding the detail in memory.
+- **Condensation log entries go in the dream diary**, not a separate artifact.
 
 ---
 
@@ -310,8 +409,7 @@ structural action.
   session generated 20+ candidates, pick the top 5 by durability score.
 - **Respect backend limits:**
   - Built-in: Over 60% char usage → defer *new additions*, allow *replacements
-    that reduce char count*. Over 80% → defer everything, perform inline
-    trimming of verbose entries (condense to wiki pointers).
+    that reduce char count*. Over 80% → defer everything, run Phase 2.5 Condensation first.
   - Holographic: No char limit, but flag entries below `min_trust_threshold`.
     Contradicted entries should get `fact_feedback(action='unhelpful')`.
 - **Dream diary is append-only.** Never overwrite previous diary entries. New
@@ -346,7 +444,7 @@ After a dreaming run:
 | Phase 2: remove | `memory(action='remove', old_text='...')` | `fact_store(action='remove', fact_id=N)` |
 | Phase 2: list/verify | Read MEMORY.md | `fact_store(action='list')` |
 | Capacity check | Char count / 2,200 | Trust score distribution |
-| Bloat remediation | Inline trimming (wiki pointers) | `fact_feedback(action='unhelpful')` + trust decay |
+| Bloat remediation | Phase 2.5 Condensation (built into dreaming) | `fact_feedback(action='unhelpful')` + trust decay |
 | Phase 3 REM | ✅ | ✅ |
 | Honcho fallback | ✅ (falls back to built-in) | N/A |
 | Mem0 fallback | ✅ (falls back to built-in) | N/A |
@@ -373,3 +471,9 @@ After a dreaming run:
 - **Dream diary compatibility.** Both backends share the same diary format and
   dream artifact directory. Entries are tagged with `(backend: <mode>)` for
   traceability.
+- **Dream diary patching requires extra context.** Diary entries accumulate
+  repetitive closing phrases (e.g. `→ No structural action needed.`, `→ Proposed:`)
+  that appear in every cycle. When using `patch` to append, include the full
+  pattern name and preceding lines in `old_string` to guarantee a unique match.
+  A single-sentence `old_string` like `→ No structural action needed.` will hit
+  multiple matches and fail — anchor with the pattern's numbered header.
