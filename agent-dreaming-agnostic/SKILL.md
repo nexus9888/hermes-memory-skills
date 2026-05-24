@@ -37,12 +37,12 @@ determines which tools you use in Phase 2.
 
    Or read the config and check `memory.provider`.
 
-2. **Set backend mode:**
+2. **Set backend mode and active schema:**
 
    | Config value | Backend | Tools to use in Phase 2 | Threshold check |
    |---|---|---|---|
    | `""` (empty) or `null` or absent | **built-in** | `memory(action='add'|'replace'|'remove')` | Char limit (60%/80% of 2,200) |
-   | `holographic` | **holographic** | `fact_store(action='add'|'update'|'remove')` + `fact_feedback(action='helpful'|'unhelpful')` | Trust score (min 0.3 default) |
+   | `holographic` | **holographic** | `fact_store(action='add'|'update'|'remove')` + `fact_feedback(action='helpful'|'unhelpful')` | Trust score (min 0.3 default); entity handling depends on active tool schema |
    | `honcho` | **honcho** | Not yet supported — fall back to built-in `memory()` | Built-in limits apply |
    | `mem0` | **mem0** | Not yet supported — fall back to built-in `memory()` | Built-in limits apply |
    | Other | **unknown** | Fall back to built-in `memory()` | Built-in limits apply |
@@ -63,13 +63,25 @@ determines which tools you use in Phase 2.
    This is the single most common blocker across dreaming cycles — flag it in the
    REM message so the user can wire the plugin.
 
-5. **Verify tool availability before Phase 2.** After determining the backend,
-   confirm the required tools are actually available in your toolset by scanning
-   your tool list. If `fact_store` is absent despite holographic being configured,
-   fall back to built-in `memory()` and note it in the dream artifact's backend
+5. **Verify tool and parameter availability before Phase 2.** After determining
+   the backend, confirm the required tools are actually available in your active
+   toolset. If `fact_store` is absent despite holographic being configured, fall
+   back to built-in `memory()` and note it in the dream artifact's backend
    section: `Holographic configured but tools unavailable — fallback to built-in`.
-   The Phase 2 routing table still applies, but the actual tool calls degrade to
-   built-in when holographic tools are missing.
+
+   Also inspect the active `fact_store` schema before writing. Holographic plugin
+   versions differ:
+   - **Explicit-entity schema:** `fact_store(action='add', content='...',
+     category='...', tags='...', entities=['user','project'])` is accepted.
+   - **Current compact schema:** `fact_store(action='add', content='...',
+     category='...', tags='user,project')` is accepted, while `entities` is only
+     available for query actions like `reason`.
+
+   Never pass parameters that are absent from the active schema. If explicit
+   `entities` is unavailable, preserve entity context in comma-separated `tags`
+   and concise content text, then verify recall with `fact_store(action='search',
+   query='<entity keywords>')` and, when supported by the backend,
+   `fact_store(action='probe', entity='<entity>')`.
 
 ---
 
@@ -94,10 +106,12 @@ determines which tools you use in Phase 2.
    **Built-in:** Read `$HERMES_HOME/memories/MEMORY.md`. Count entries (split on
    `§`, count non-empty segments). Note char usage. This is your baseline.
 
-   **Holographic:** Call `fact_store(action='list', limit=50)` and
-   `fact_store(action='search', query='')` to get a broad view of what's stored.
-   Count entries and note trust score distribution. Holographic has no char
-   limit, so "baseline" means entry count and average trust.
+   **Holographic:** Call `fact_store(action='list', limit=50)` to get a broad
+   view of what's stored. If the active schema permits blank keyword search, also
+   call `fact_store(action='search', query='')`; otherwise skip blank search and
+   use targeted `search`/`probe` calls during candidate scoring. Count entries
+   and note trust score distribution. Holographic has no char limit, so
+   "baseline" means entry count and average trust.
 
 4. **Filter sessions.** Skip cron sessions (`session.source == "cron"`) — they're
    fully automated with no user interaction, unless they logged errors.
@@ -199,25 +213,27 @@ determines which tools you use in Phase 2.
 
    #### Holographic Backend
 
-   Use `fact_store` and `fact_feedback`:
-   - **New entries:** `fact_store(action='add', content='...',
-     category='<user_pref|project|tool|general>', tags='...',
-     entities=['entity1', 'entity2'])` — Provide entities for compositional
-     recall. Categories: `user_pref` for preferences/habits, `project` for
-     workspace/codebase facts, `tool` for tool quirks/workarounds, `general` for
-     everything else.
+   Use `fact_store` and `fact_feedback`, matching the active tool schema exactly:
+   - **New entries, explicit-entity schema:** `fact_store(action='add',
+     content='...', category='<user_pref|project|tool|general>', tags='...',
+     entities=['entity1', 'entity2'])`.
+   - **New entries, compact/current schema:** `fact_store(action='add',
+     content='...', category='<user_pref|project|tool|general>',
+     tags='entity1,entity2,topic')`. Do not pass `entities` if the schema does
+     not advertise it for `add`.
    - **Replacements:** `fact_store(action='update', fact_id=<id>,
      content='updated text')` — Get the fact_id from Phase 1's `list` output.
    - **Removals:** `fact_store(action='remove', fact_id=<id>)` — only if the
      fact is genuinely stale or contradicted.
 
-   **Entities are critical for holographic.** Unlike MEMORY.md (flat text),
-   holographic uses HRR vectors bound to entities for compositional queries.
-   Always provide entities when adding facts:
-   - User preferences → entity: "user"
-   - Project facts → entity: project name (e.g., "openroom", "ghostfolio")
-   - Tool facts → entity: tool name (e.g., "docker", "pytest")
-   - General/environment → entity: "environment"
+   **Entity context is critical for holographic recall.** Unlike MEMORY.md (flat
+   text), holographic retrieval benefits from canonical entity names. Preserve
+   them either via explicit `entities` when supported or via `tags`/compact
+   content when not supported:
+   - User preferences → entity/tag: "user"
+   - Project facts → project name (e.g., "openroom", "ghostfolio")
+   - Tool facts → tool name (e.g., "docker", "pytest")
+   - General/environment → entity/tag: "environment"
 
 4. **Log promotions to dream diary.** Append to
    `$HERMES_HOME/dreams/diary.md`:
@@ -400,9 +416,11 @@ structural action.
   `see skill '...'`), the pointer IS the entry. Inline detail that duplicates
   what the pointer targets should be removed. Details belong at the destination,
   not in memory.
-- **For holographic: entities are mandatory on add.** Never call
-  `fact_store(action='add')` without `entities`. Without entities, the fact
-  cannot be recalled via `probe` or `reason` — it's effectively orphaned.
+- **For holographic: entity context is mandatory, but the parameter is
+  schema-dependent.** If the active `fact_store` schema supports `entities` on
+  `add`, use it. If it does not, do not pass unsupported parameters; encode
+  canonical entity names in `tags` and concise content, then verify retrieval with
+  `search`/`probe` where available.
 - **Preserve the § delimiter (built-in only).** When reading/writing MEMORY.md
   directly, never corrupt the entry separator.
 - **Keep dreams compact.** Dream artifacts should be under 200 lines. If a
@@ -429,7 +447,9 @@ After a dreaming run:
 4. Dream artifact exists with all three phases documented
 5. Dream diary has a new entry
 6. No entries were promoted without a source session reference
-7. For holographic: all new entries have entities
+7. For holographic: all new entries preserve entity context using either
+   explicit `entities` or schema-compatible `tags`/content, and retrieval was
+   verified with `search`/`probe` where available
 
 ---
 
@@ -439,7 +459,7 @@ After a dreaming run:
 |---|---|---|
 | Phase 0 detection | ✅ | ✅ |
 | Phase 1 session review | ✅ | ✅ |
-| Phase 2: add | `memory(action='add', target='memory')` | `fact_store(action='add', content='...', entities=[...])` |
+| Phase 2: add | `memory(action='add', target='memory')` | `fact_store(action='add', content='...', category='...', tags='entity,topic')`; add `entities=[...]` only when active schema supports it |
 | Phase 2: replace | `memory(action='replace', old_text='...')` | `fact_store(action='update', fact_id=N)` |
 | Phase 2: remove | `memory(action='remove', old_text='...')` | `fact_store(action='remove', fact_id=N)` |
 | Phase 2: list/verify | Read MEMORY.md | `fact_store(action='list')` |
@@ -458,16 +478,17 @@ After a dreaming run:
   to write to MEMORY.md than to nothing. But if the user expected holographic
   behavior and didn't get it, they won't know unless you report the backend in
   the REM message.
-- **Holographic entities are not optional.** Unlike built-in memory where you
-  can write any string, holographic facts without entities are invisible to
-  `probe` and `reason`. Always provide entities.
+- **Holographic entity handling is version-sensitive.** Unlike built-in memory
+  where you can write any string, holographic recall needs stable entity context.
+  Some plugin versions expose `entities` on `add`; current Hermes schemas may not.
+  Always inspect the active schema and use `tags`/content as the fallback carrier.
 - **Don't assume trust scores replace char limits.** Holographic has no capacity
   limit, but low-trust facts still pollute retrieval. Use `fact_feedback` to
   decay bad entries rather than hoarding indefinitely.
 - **Wiki pointer format differs per backend:**
   - Built-in: `see wiki/path/page.md` inline in the entry text
-  - Holographic: still include the pointer in `content`, but also add the wiki
-    page as an entity for compositional queries
+  - Holographic: still include the pointer in `content`; if explicit entities are
+    supported, add the wiki page as an entity, otherwise add it to `tags`
 - **Dream diary compatibility.** Both backends share the same diary format and
   dream artifact directory. Entries are tagged with `(backend: <mode>)` for
   traceability.

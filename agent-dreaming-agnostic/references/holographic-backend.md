@@ -11,7 +11,7 @@ Used by `agent-dreaming-agnostic` Phase 2 routing.
 
 | Action | Purpose | Required params | Returns |
 |--------|---------|----------------|---------|
-| `add` | Store a new fact | `content`, `entities` | `{fact_id, trust}` |
+| `add` | Store a new fact | `content`; optional `category`, `tags`; some plugin versions also accept `entities` | `{fact_id, trust}` |
 | `search` | Keyword lookup | `query` | Matching facts with scores |
 | `probe` | All facts about an entity | `entity` | Entity's fact bundle |
 | `related` | What connects to an entity | `entity` | Structural adjacency |
@@ -21,7 +21,7 @@ Used by `agent-dreaming-agnostic` Phase 2 routing.
 | `remove` | Delete a fact | `fact_id` | Confirmation |
 | `list` | List all facts | none | Full fact list |
 
-Optional params: `category` (user_pref/project/tool/general), `tags` (comma-separated), `min_trust` (filter threshold, default 0.3), `limit` (max results, default 10).
+Optional params vary by active Hermes/plugin version. Common params: `category` (user_pref/project/tool/general), `tags` (comma-separated), `min_trust` (filter threshold, default 0.3), `limit` (max results, default 10). Some Holographic plugin versions accept `entities` on `add`; current compact Hermes schemas may reserve `entity`/`entities` for query actions (`probe`, `related`, `reason`) and require entity context to be carried in `tags`/content during `add`.
 
 ### `fact_feedback` — Trust score training
 
@@ -71,7 +71,10 @@ Key properties:
 ## Entity Strategy
 
 Entities are the backbone of holographic retrieval. Every fact should be
-associated with at least one entity:
+associated with at least one entity concept. How that concept is passed depends
+on the active tool schema: use explicit `entities` on `add` when available;
+otherwise use canonical entity names in comma-separated `tags` and concise
+content text.
 
 | Fact type | Entity | Example |
 |-----------|--------|---------|
@@ -82,7 +85,8 @@ associated with at least one entity:
 | Cross-cutting | Multiple | `['user', 'openroom']` for "Josh is the maintainer of OpenRoom" |
 
 **Rule of thumb:** If you'd want to recall this fact when probing an entity, that
-entity should be in the fact's entity list.
+entity should be present either in the fact's explicit entity list or in its
+comma-separated tags/content fallback.
 
 ## Comparison with Built-in MEMORY.md
 
@@ -93,7 +97,7 @@ entity should be in the fact's entity list.
 | Retrieval | Injected into system prompt (always visible) | On-demand via tool calls |
 | Compositional queries | No (grep at best) | Yes (HRR reason/probe/related) |
 | Trust/decay | Manual (remove stale entries) | Automatic (trust scoring + feedback) |
-| Entry format | Free text, § delimited | Structured: content + category + entities + tags |
+| Entry format | Free text, § delimited | Structured: content + category + tags; explicit entities when supported by active schema |
 | Bloat handling | Phase 2.5 Condensation (built into dreaming) | `fact_feedback(action='unhelpful')` decay |
 | Offline/air-gapped | Yes (local file) | Yes (local SQLite) |
 | Multi-profile safe | Via `$HERMES_HOME` | Via `$HERMES_HOME` |

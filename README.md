@@ -34,7 +34,7 @@ Phase 3:   REM — extract patterns, propose structural changes
 - Phase 0 backend detection from `config.yaml`
 - Phase 2 routes to `memory()` or `fact_store()`/`fact_feedback()` automatically
 - Capacity check adapts: char limit for built-in, trust score distribution for holographic
-- New entries in holographic always include `entities` for compositional recall
+- New entries in holographic preserve entity context using whichever `fact_store` schema is available (`entities` parameter on older/newer plugins, or entity names in `tags`/`content` on current Hermes tool schemas)
 - **Phase 2.5 Condensation** built in — no separate `memory-lean-check` skill needed
 - Honcho/Mem0/other backends gracefully fall back to built-in
 
@@ -66,9 +66,9 @@ Recommended schedule (works regardless of backend):
 ```bash
 # Dream — handles both promotion AND condensation
 hermes cron create \
-  --schedule "0 */6 * * *" \
   --name "agent-dreaming" \
   --skill agent-dreaming-agnostic \
+  "0 */6 * * *" \
   "Run memory consolidation with the active backend"
 ```
 
@@ -81,9 +81,15 @@ hermes cron create \
 - `llm-wiki` skill installed (for wiki pointer creation in Phase 2)
 - For Holographic backend: `memory.provider: holographic` in config.yaml + plugin installed
 
+## Compatibility Notes
+
+Hermes and the Holographic plugin have used more than one `fact_store` schema. Some versions accept an explicit `entities=[...]` argument on `add`; current Hermes tool schemas may only expose `content`, `category`, and comma-separated `tags` for `add`, with `entity`/`entities` reserved for `probe`, `related`, and `reason`.
+
+This skill therefore treats explicit `entities` as optional and schema-dependent. If `entities` is unavailable on `fact_store(action='add')`, preserve the same retrieval signal by including canonical entity names in `tags` and, when useful, in compact content text. Never issue a tool call with parameters absent from the active schema.
+
 ## How It Detects the Backend
 
-The skill reads `memory.provider` from `$HERMES_HOME/config.yaml`:
+The skill reads `memory.provider` from `$HERMES_HOME/config.yaml` and then verifies which memory tools/parameters are actually available in the running Hermes session:
 
 ```yaml
 # Built-in (default — no provider set):
