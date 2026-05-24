@@ -52,12 +52,13 @@ cp -r agent-dreaming-agnostic ~/.hermes/skills/management/
 hermes skills list | grep agnostic
 ```
 
-Or install directly from the repo:
+Or install the single-file skill directly from the raw `SKILL.md` URL:
 
 ```bash
-hermes skills tap add https://github.com/nexus9888/hermes-memory-skills
-hermes skills install agent-dreaming-agnostic
+hermes skills install https://raw.githubusercontent.com/nexus9888/hermes-memory-skills/main/agent-dreaming-agnostic/SKILL.md
 ```
+
+Note: the direct raw install only installs `SKILL.md`. Use the clone/copy method above if you also want the optional `references/holographic-backend.md` file. The generic `hermes skills tap add ... && hermes skills install agent-dreaming-agnostic` flow may not discover this repository unless/until the repo is published in a Hermes skill-index format.
 
 ## Cron Setup
 
