@@ -1,9 +1,9 @@
 ---
-name: agent-dreaming-agnostic
-description: "Memory-agnostic background consolidation — reviews sessions, scores candidates, promotes durable insights to the active memory backend (built-in MEMORY.md or Holographic). Three-phase (Light/Deep/Condensation/REM). Run via cron or manually."
-tags: [memory, consolidation, dreaming, introspection, maintenance, holographic]
+name: "agent-dreaming-agnostic"
+description: "Use when memory-agnostic background consolidation \u2014 reviews sessions, scores candidates, promotes durable insights to the active memory backend (built-in MEMORY.md or Holographic). Three-phase (Light/Deep/Condensation/REM). Run via cron or manually."
+tags: ["memory", "consolidation", "dreaming", "introspection", "maintenance", "holographic"]
 triggers: ["dream", "consolidate memory", "run dreaming", "memory consolidation"]
----
+----
 
 # Agent Dreaming (Memory-Agnostic)
 

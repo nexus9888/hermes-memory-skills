@@ -1,9 +1,9 @@
 ---
-name: agent-dreaming
-description: "DEPRECATED — use agent-dreaming-agnostic instead. Background memory consolidation for built-in MEMORY.md only."
-tags: [memory, consolidation, dreaming, introspection, maintenance, deprecated]
+name: "agent-dreaming"
+description: "Use when dEPRECATED \u2014 use agent-dreaming-agnostic instead. Background memory consolidation for built-in MEMORY.md only."
+tags: ["memory", "consolidation", "dreaming", "introspection", "maintenance", "deprecated"]
 triggers: ["dream", "consolidate memory", "run dreaming", "memory consolidation"]
----
+----
 
 # Agent Dreaming (DEPRECATED)
 
